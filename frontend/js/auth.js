@@ -173,8 +173,19 @@ function setupUserHeader() {
     if (user) {
         const userNameEls = document.querySelectorAll(".user-display-name");
         userNameEls.forEach(el => el.textContent = user.name);
+
         const userEmailEls = document.querySelectorAll(".user-display-email");
         userEmailEls.forEach(el => el.textContent = user.email);
+
+        // Iniciais para o avatar
+        const initialsEls = document.querySelectorAll(".user-display-initials");
+        if (user.name) {
+            const parts = user.name.trim().split(/\s+/);
+            const initials = parts.length > 1 
+                ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase() 
+                : parts[0].slice(0, 2).toUpperCase();
+            initialsEls.forEach(el => el.textContent = initials);
+        }
     }
 
     const logoutBtns = document.querySelectorAll(".btn-logout");

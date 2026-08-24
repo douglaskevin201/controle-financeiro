@@ -5,9 +5,12 @@ window.currentSelectedYear = today.getFullYear();
 window.currentActiveTab = "dashboard";
 
 document.addEventListener("DOMContentLoaded", () => {
+    initTheme();
     initDateFilters();
     initEventListeners();
     initTabNavigation();
+    initMobileSidebar();
+    initTypeSelectHighlight();
 
     // Carregamento inicial de dados
     loadCategories();
@@ -17,6 +20,80 @@ document.addEventListener("DOMContentLoaded", () => {
     loadPockets();
 });
 
+// ==========================================
+// TEMA DARK / LIGHT MODE
+// ==========================================
+function initTheme() {
+    const savedTheme = localStorage.getItem("finance_theme");
+    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    
+    if (savedTheme === "dark" || (!savedTheme && prefersDark)) {
+        document.documentElement.classList.add("dark");
+        updateThemeToggleIcons(true);
+    } else {
+        document.documentElement.classList.remove("dark");
+        updateThemeToggleIcons(false);
+    }
+
+    const themeToggleBtn = document.getElementById("theme-toggle-btn");
+    if (themeToggleBtn) {
+        themeToggleBtn.addEventListener("click", toggleTheme);
+    }
+}
+
+function toggleTheme() {
+    const isDark = document.documentElement.classList.toggle("dark");
+    localStorage.setItem("finance_theme", isDark ? "dark" : "light");
+    updateThemeToggleIcons(isDark);
+
+    // Atualiza os gráficos do Dashboard para refletir as cores do tema
+    if (window.currentActiveTab === "dashboard") {
+        loadDashboardData();
+    }
+}
+
+function updateThemeToggleIcons(isDark) {
+    const sunIcon = document.getElementById("theme-icon-sun");
+    const moonIcon = document.getElementById("theme-icon-moon");
+    if (sunIcon && moonIcon) {
+        if (isDark) {
+            sunIcon.classList.remove("hidden");
+            moonIcon.classList.add("hidden");
+        } else {
+            sunIcon.classList.add("hidden");
+            moonIcon.classList.remove("hidden");
+        }
+    }
+}
+
+// ==========================================
+// NAVEGAÇÃO MOBILE (SIDEBAR DRAWER)
+// ==========================================
+function initMobileSidebar() {
+    const mobileMenuBtn = document.getElementById("mobile-menu-btn");
+    const sidebar = document.getElementById("app-sidebar");
+    const backdrop = document.getElementById("sidebar-backdrop");
+
+    if (mobileMenuBtn && sidebar && backdrop) {
+        mobileMenuBtn.addEventListener("click", () => {
+            sidebar.classList.remove("-translate-x-full");
+            backdrop.classList.remove("hidden");
+        });
+
+        backdrop.addEventListener("click", closeMobileSidebar);
+    }
+}
+
+function closeMobileSidebar() {
+    const sidebar = document.getElementById("app-sidebar");
+    const backdrop = document.getElementById("sidebar-backdrop");
+    if (sidebar) sidebar.classList.add("-translate-x-full");
+    if (backdrop) backdrop.classList.add("hidden");
+}
+
+// ==========================================
+// FILTROS DE DATA
+// ==========================================
 function initDateFilters() {
     const monthSelect = document.getElementById("global-month-select");
     const yearSelect = document.getElementById("global-year-select");
@@ -50,13 +127,19 @@ function onGlobalDateChanged() {
     loadRecurringBills();
 }
 
+// ==========================================
+// NAVEGAÇÃO ENTRE ABAS COM INDICADOR LATERAL
+// ==========================================
 function initTabNavigation() {
     const tabs = ["dashboard", "transactions", "recurring", "pockets"];
     
     tabs.forEach(tabId => {
         const btn = document.getElementById(`nav-tab-${tabId}`);
         if (btn) {
-            btn.addEventListener("click", () => switchTab(tabId));
+            btn.addEventListener("click", () => {
+                switchTab(tabId);
+                closeMobileSidebar();
+            });
         }
     });
 }
@@ -71,12 +154,14 @@ function switchTab(tabId) {
 
         if (t === tabId) {
             if (btn) {
-                btn.className = "flex items-center gap-2.5 px-4 py-2.5 rounded-xl font-semibold text-sm bg-emerald-50 text-emerald-700 transition";
+                // Item ativo com indicador lateral colorido e fundo destacado
+                btn.className = "w-full flex items-center gap-3.5 px-4 py-3 rounded-xl font-semibold text-sm bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 border-l-4 border-emerald-600 dark:border-emerald-400 shadow-sm transition";
             }
             if (view) view.classList.remove("hidden");
         } else {
             if (btn) {
-                btn.className = "flex items-center gap-2.5 px-4 py-2.5 rounded-xl font-medium text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition";
+                // Item inativo
+                btn.className = "w-full flex items-center gap-3.5 px-4 py-3 rounded-xl font-medium text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100/70 dark:hover:bg-slate-800/60 border-l-4 border-transparent transition";
             }
             if (view) view.classList.add("hidden");
         }
@@ -89,8 +174,27 @@ function switchTab(tabId) {
     if (tabId === "pockets") loadPockets();
 }
 
+// ==========================================
+// DESTAQUE VISUAL NO SELECT DE TIPO (DESPESA / RECEITA)
+// ==========================================
+function initTypeSelectHighlight() {
+    const txTypeSelect = document.getElementById("tx-type");
+    if (!txTypeSelect) return;
+
+    function applyHighlight() {
+        if (txTypeSelect.value === "expense") {
+            txTypeSelect.className = "w-full pl-10 pr-4 py-2.5 bg-rose-50/70 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800/60 text-rose-800 dark:text-rose-300 font-semibold rounded-xl text-sm focus:ring-2 focus:ring-rose-500 transition-colors";
+        } else {
+            txTypeSelect.className = "w-full pl-10 pr-4 py-2.5 bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/60 text-emerald-800 dark:text-emerald-300 font-semibold rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 transition-colors";
+        }
+    }
+
+    txTypeSelect.addEventListener("change", applyHighlight);
+    applyHighlight();
+}
+
 function initEventListeners() {
-    // Forms
+    // Formulários
     const formTx = document.getElementById("form-transaction");
     if (formTx) formTx.addEventListener("submit", handleCreateTransaction);
 
@@ -123,7 +227,7 @@ function initEventListeners() {
     }
 }
 
-// Modal helper functions
+// Modal helper functions com animação
 function openModal(modalId) {
     const modal = document.getElementById(modalId);
     if (modal) {
@@ -162,4 +266,3 @@ async function handleCreateCategory(e) {
         showToast(err.message, "error");
     }
 }
-
