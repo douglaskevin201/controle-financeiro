@@ -12,6 +12,7 @@ class User(Base):
     hashed_password = Column(String, nullable=False)
     is_admin = Column(Boolean, default=False)
     revoked_tokens = Column(JSON, default=list)
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
 
     # Relacionamentos
     categories = relationship("Category", back_populates="user", cascade="all, delete-orphan")
