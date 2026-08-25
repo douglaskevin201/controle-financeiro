@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from sqlalchemy import Column, Integer, String, DateTime
+from sqlalchemy import Column, Integer, String, DateTime, Boolean, JSON
 from sqlalchemy.orm import relationship
 from backend.app.database import Base
 
@@ -10,7 +10,8 @@ class User(Base):
     name = Column(String, nullable=False)
     email = Column(String, unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=False)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    is_admin = Column(Boolean, default=False)
+    revoked_tokens = Column(JSON, default=list)
 
     # Relacionamentos
     categories = relationship("Category", back_populates="user", cascade="all, delete-orphan")

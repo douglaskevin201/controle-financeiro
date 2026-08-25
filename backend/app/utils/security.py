@@ -22,7 +22,10 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
         expire = now_utc + expires_delta
     else:
         expire = now_utc + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-    to_encode.update({"exp": expire})
+    # add JWT ID for revocation
+    import uuid
+    jti = str(uuid.uuid4())
+    to_encode.update({"exp": expire, "jti": jti})
     encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
     return encoded_jwt
 
