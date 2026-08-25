@@ -11,9 +11,13 @@ class Pocket(Base):
     name = Column(String, nullable=False)
     target_amount = Column(Float, nullable=True) # Meta opcional
     current_amount = Column(Float, default=0.0, nullable=False) # Saldo acumulado na caixinha
+    # optimistic concurrency control
+    version = Column(Integer, nullable=False, default=1)
     color = Column(String, default="#10B981")
     icon = Column(String, default="piggy-bank")
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    __mapper_args__ = {"version_id_col": version}
 
     user = relationship("User", back_populates="pockets")
     transactions = relationship("PocketTransaction", back_populates="pocket", cascade="all, delete-orphan")

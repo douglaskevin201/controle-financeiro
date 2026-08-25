@@ -95,42 +95,64 @@ def transfer_pocket_funds(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    pocket = db.query(Pocket).filter(
-        Pocket.id == pocket_id,
-        Pocket.user_id == current_user.id
-    ).first()
-    if not pocket:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Caixinha não encontrada.")
+    """Transfer funds into or out of a pocket.
+
+    Uses optimistic locking (Pocket.version) with a small retry loop to handle concurrent updates.
+    When running on Postgres, .with_for_update() will acquire a row lock; on SQLite it is ignored.
+    """
+    from sqlalchemy.exc import StaleDataError
 
     tx_date = transfer_in.transaction_date or date.today()
+    MAX_RETRIES = 3
 
-    if transfer_in.type == "deposit":
-        pocket.current_amount += transfer_in.amount
-        desc = transfer_in.description or f"Guardado na caixinha {pocket.name}"
-    elif transfer_in.type == "withdraw":
-        if pocket.current_amount < transfer_in.amount:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Saldo insuficiente na caixinha. Saldo atual: R$ {pocket.current_amount:.2f}"
+    for attempt in range(MAX_RETRIES):
+        try:
+            # Try to acquire row lock when supported by the DB - harmless noop on SQLite
+            pocket = db.query(Pocket).with_for_update().filter(
+                Pocket.id == pocket_id,
+                Pocket.user_id == current_user.id
+            ).first()
+
+            if not pocket:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Caixinha não encontrada.")
+
+            if transfer_in.type == "deposit":
+                pocket.current_amount += transfer_in.amount
+                desc = transfer_in.description or f"Guardado na caixinha {pocket.name}"
+            elif transfer_in.type == "withdraw":
+                if pocket.current_amount < transfer_in.amount:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"Saldo insuficiente na caixinha. Saldo atual: R$ {pocket.current_amount:.2f}"
+                    )
+                pocket.current_amount -= transfer_in.amount
+                desc = transfer_in.description or f"Resgate da caixinha {pocket.name}"
+            else:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Tipo de transferência inválido.")
+
+            ptx = PocketTransaction(
+                pocket_id=pocket.id,
+                user_id=current_user.id,
+                type=transfer_in.type,
+                amount=transfer_in.amount,
+                description=desc,
+                transaction_date=tx_date
             )
-        pocket.current_amount -= transfer_in.amount
-        desc = transfer_in.description or f"Resgate da caixinha {pocket.name}"
-    else:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Tipo de transferência inválido.")
+            db.add(ptx)
+            # commit will attempt the update; if version changed concurrently, SQLAlchemy raises StaleDataError
+            db.commit()
+            db.refresh(pocket)
+            return build_pocket_response(pocket)
 
-    ptx = PocketTransaction(
-        pocket_id=pocket.id,
-        user_id=current_user.id,
-        type=transfer_in.type,
-        amount=transfer_in.amount,
-        description=desc,
-        transaction_date=tx_date
-    )
-    db.add(ptx)
-    db.commit()
-    db.refresh(pocket)
+        except StaleDataError:
+            # Concurrent update detected: rollback and retry
+            db.rollback()
+            if attempt == MAX_RETRIES - 1:
+                raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Conflito de concorrência ao atualizar a caixinha. Tente novamente.")
+            # otherwise loop to retry
 
-    return build_pocket_response(pocket)
+    # Should not reach here
+    raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Falha ao processar transferência")
 
 @router.get("/{pocket_id}/transactions", response_model=List[PocketTransactionResponse])
 def list_pocket_transactions(

@@ -5,16 +5,17 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "Controle Financeiro Pessoal"
-    ENVIRONMENT: str = os.getenv("ENVIRONMENT", "development") # 'development' ou 'production'
+    ENVIRONMENT: str = "development" # 'development' ou 'production'
     
-    SECRET_KEY: str = os.getenv("SECRET_KEY", "finance_default_secret_key_change_in_production_987654321")
+    SECRET_KEY: str = "finance_default_secret_key_change_in_production_987654321"
     ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 365  # 1 year
-    ADMIN_SECRET_PASSWORD: str = os.getenv("ADMIN_SECRET_PASSWORD", "")
-    DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///./finance.db")
+    # Default to 7 days (in minutes). This value can be overridden via .env or environment variables.
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 10080  # 7 days
+    ADMIN_SECRET_PASSWORD: str = ""
+    DATABASE_URL: str = "sqlite:///./finance.db"
     
     # CORS: lista de origens autorizadas (pode ser string separada por vírgula no .env)
-    CORS_ORIGINS: Union[List[str], str] = os.getenv("CORS_ORIGINS", "http://localhost:8000,http://127.0.0.1:8000")
+    CORS_ORIGINS: Union[List[str], str] = "http://localhost:8000,http://127.0.0.1:8000"
 
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod
