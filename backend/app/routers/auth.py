@@ -23,17 +23,12 @@ def register(user_in: UserCreate, db: Session = Depends(get_db)):
             detail="Este e-mail já está cadastrado no sistema."
         )
 
-    # Define admin flag based on secret password
-    is_admin_flag = False
-    if user_in.admin_password and user_in.admin_password == settings.ADMIN_SECRET_PASSWORD:
-        is_admin_flag = True
-
     # Cria o novo usuário
     new_user = User(
         name=user_in.name.strip(),
         email=user_in.email.lower().strip(),
         hashed_password=hash_password(user_in.password),
-        is_admin=is_admin_flag,
+        is_admin=False,
     )
     db.add(new_user)
     db.commit()

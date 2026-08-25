@@ -170,3 +170,74 @@ def test_dashboard_summary_calculation(client, auth_headers):
     assert dash["monthly_expense"] == 2000.0
     assert dash["monthly_net"] == 8000.0
 
+def test_fixed_income_receipt_is_idempotent_and_supports_extra(client, auth_headers):
+    res_income = client.post("/api/fixed-incomes", headers=auth_headers, json={
+        "description": "Salário mensal",
+        "base_amount": 5000.0,
+        "pay_day": 5
+    })
+    assert res_income.status_code == 201
+    income_id = res_income.json()["id"]
+
+    first = client.post(f"/api/fixed-incomes/{income_id}/receive?month=8&year=2026", headers=auth_headers, json={
+        "extra_amount": 300.0,
+        "paid_date": "2026-08-05"
+    })
+    assert first.status_code == 200
+    assert first.json()["receipt"]["received_amount"] == 5300.0
+
+    second = client.post(f"/api/fixed-incomes/{income_id}/receive?month=8&year=2026", headers=auth_headers, json={
+        "extra_amount": 700.0,
+        "paid_date": "2026-08-05"
+    })
+    assert second.status_code == 200
+    assert second.json()["receipt"]["received_amount"] == 5700.0
+
+    transactions = client.get("/api/transactions?month=8&year=2026", headers=auth_headers)
+    assert transactions.status_code == 200
+    assert len(transactions.json()) == 1
+    assert transactions.json()[0]["amount"] == 5700.0
+
+    dashboard = client.get("/api/dashboard/summary?month=8&year=2026", headers=auth_headers)
+    assert dashboard.status_code == 200
+    assert dashboard.json()["fixed_income_expected"] == 5000.0
+
+def test_installments_and_next_month_projection(client, auth_headers):
+    bill = client.post("/api/recurring-bills", headers=auth_headers, json={
+        "description": "Compra parcelada",
+        "amount": 500.0,
+        "total_amount": 500.0,
+        "installments_total": 2,
+        "due_day": 10,
+        "start_month": 8,
+        "start_year": 2026
+    })
+    assert bill.status_code == 201
+    assert bill.json()["amount"] == 250.0
+    assert bill.json()["total_amount"] == 500.0
+
+    next_month = client.get("/api/dashboard/projection?month=8&year=2026", headers=auth_headers)
+    assert next_month.status_code == 200
+    assert next_month.json()["projection_month"] == 9
+    assert next_month.json()["recurring_bills_expected"] == 250.0
+
+    planned = client.post("/api/transactions", headers=auth_headers, json={
+        "description": "Compra planejada",
+        "amount": 100.0,
+        "type": "expense",
+        "is_planned": True,
+        "transaction_date": "2026-09-15"
+    })
+    assert planned.status_code == 201
+    projection_with_plan = client.get("/api/dashboard/projection?month=8&year=2026", headers=auth_headers)
+    assert projection_with_plan.json()["planned_expense"] == 100.0
+    assert projection_with_plan.json()["projected_net"] == -350.0
+
+    current = client.get("/api/dashboard/summary?month=8&year=2026", headers=auth_headers)
+    assert current.status_code == 200
+    assert current.json()["monthly_expense"] == 0.0
+
+    after_installments = client.get("/api/recurring-bills?month=10&year=2026", headers=auth_headers)
+    assert after_installments.status_code == 200
+    assert after_installments.json() == []
+

@@ -53,6 +53,8 @@ def create_transaction(
         ).first()
         if not category:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Categoria inválida.")
+        if category.type != trans_in.type:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="A categoria não corresponde ao tipo da transação.")
     
     transaction_date = trans_in.transaction_date or date.today()
 
@@ -62,6 +64,7 @@ def create_transaction(
         description=trans_in.description.strip(),
         amount=trans_in.amount,
         type=trans_in.type,
+        is_planned=trans_in.is_planned,
         transaction_date=transaction_date
     )
     db.add(new_tx)
@@ -105,6 +108,8 @@ def update_transaction(
             ).first()
             if not category:
                 raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Categoria inválida.")
+            if trans_in.type is not None and category.type != trans_in.type:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="A categoria não corresponde ao tipo da transação.")
             tx.category_id = trans_in.category_id
         else:
             tx.category_id = None
@@ -115,8 +120,14 @@ def update_transaction(
         tx.amount = trans_in.amount
     if trans_in.type is not None:
         tx.type = trans_in.type
+        if tx.category_id:
+            category = db.query(Category).filter(Category.id == tx.category_id).first()
+            if category and category.type != trans_in.type:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="A categoria não corresponde ao tipo da transação.")
     if trans_in.transaction_date is not None:
         tx.transaction_date = trans_in.transaction_date
+    if trans_in.is_planned is not None:
+        tx.is_planned = trans_in.is_planned
 
     db.commit()
     db.refresh(tx)

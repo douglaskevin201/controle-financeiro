@@ -20,4 +20,5 @@ class User(Base):
     recurring_bills = relationship("RecurringBill", back_populates="user", cascade="all, delete-orphan")
     pockets = relationship("Pocket", back_populates="user", cascade="all, delete-orphan")
     pocket_transactions = relationship("PocketTransaction", back_populates="user", cascade="all, delete-orphan")
+    fixed_incomes = relationship("FixedIncome", back_populates="user", cascade="all, delete-orphan")
 

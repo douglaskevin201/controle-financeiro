@@ -1,5 +1,5 @@
 from datetime import datetime, date, timezone
-from sqlalchemy import Column, Integer, String, Float, Date, DateTime, ForeignKey
+from sqlalchemy import Boolean, Column, Integer, String, Float, Date, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
 from backend.app.database import Base
 
@@ -12,10 +12,12 @@ class Transaction(Base):
     description = Column(String, nullable=False)
     amount = Column(Float, nullable=False)
     type = Column(String, nullable=False)  # 'income' ou 'expense'
+    is_planned = Column(Boolean, default=False, nullable=False)
     transaction_date = Column(Date, default=date.today, nullable=False)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     user = relationship("User", back_populates="transactions")
     category = relationship("Category", back_populates="transactions")
     bill_payment = relationship("BillPayment", back_populates="transaction", uselist=False)
+    fixed_income_receipt = relationship("FixedIncomeReceipt", back_populates="transaction", uselist=False)
 

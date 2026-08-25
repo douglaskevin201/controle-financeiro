@@ -14,7 +14,6 @@ async function loadDashboardData() {
         renderSummaryCards(summary);
         renderCategoryChart(charts.expenses_by_category);
         renderMonthlyEvolutionChart(charts.monthly_evolution);
-        renderDashboardQuickAlerts(summary);
     } catch (err) {
         console.error("Erro ao carregar dashboard:", err);
     }
@@ -22,6 +21,8 @@ async function loadDashboardData() {
 
 function renderSummaryCards(summary) {
     const isDark = document.documentElement.classList.contains("dark");
+    const elProjectionCurrent = document.getElementById("projection-current");
+    if (elProjectionCurrent) elProjectionCurrent.textContent = formatBRL(summary.main_balance);
 
     // 1. Saldo Principal
     const elMainBalance = document.getElementById("dash-main-balance");
@@ -75,6 +76,15 @@ function renderSummaryCards(summary) {
         elMonthlyIncome.textContent = formatBRL(summary.monthly_income);
         if (elIncomeStatus) {
             elIncomeStatus.textContent = summary.monthly_income > 0 ? "Entradas registradas" : "Nenhuma entrada este mês";
+        }
+
+        const elFixedIncomeExpected = document.getElementById("dash-fixed-income-expected");
+        const elFixedIncomeStatus = document.getElementById("dash-fixed-income-status");
+        if (elFixedIncomeExpected) {
+            elFixedIncomeExpected.textContent = formatBRL(summary.fixed_income_expected);
+            if (elFixedIncomeStatus) {
+                elFixedIncomeStatus.textContent = summary.fixed_income_expected > 0 ? "Previsão mensal configurada" : "Nenhuma renda fixa";
+            }
         }
     }
 

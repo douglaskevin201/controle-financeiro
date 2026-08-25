@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     SECRET_KEY: str = os.getenv("SECRET_KEY", "finance_default_secret_key_change_in_production_987654321")
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 365  # 1 year
-    ADMIN_SECRET_PASSWORD: str = os.getenv("ADMIN_SECRET_PASSWORD", "06062026")
+    ADMIN_SECRET_PASSWORD: str = os.getenv("ADMIN_SECRET_PASSWORD", "")
     DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///./finance.db")
     
     # CORS: lista de origens autorizadas (pode ser string separada por vírgula no .env)
@@ -33,3 +33,7 @@ class Settings(BaseSettings):
     )
 
 settings = Settings()
+
+if settings.ENVIRONMENT == "production":
+    if not settings.SECRET_KEY or settings.SECRET_KEY == "finance_default_secret_key_change_in_production_987654321":
+        raise RuntimeError("SECRET_KEY deve ser configurada com um valor forte em produção.")

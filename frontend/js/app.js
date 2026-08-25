@@ -2,7 +2,7 @@
 const today = new Date();
 window.currentSelectedMonth = today.getMonth() + 1;
 window.currentSelectedYear = today.getFullYear();
-window.currentActiveTab = "dashboard";
+window.currentActiveTab = "projection";
 
 document.addEventListener("DOMContentLoaded", () => {
     initTheme();
@@ -18,6 +18,8 @@ document.addEventListener("DOMContentLoaded", () => {
     loadTransactions();
     loadRecurringBills();
     loadPockets();
+    loadFixedIncomes();
+    loadProjection();
 });
 
 // ==========================================
@@ -125,13 +127,15 @@ function onGlobalDateChanged() {
     loadDashboardData();
     loadTransactions();
     loadRecurringBills();
+    loadFixedIncomes();
+    loadProjection();
 }
 
 // ==========================================
 // NAVEGAÇÃO ENTRE ABAS COM INDICADOR LATERAL
 // ==========================================
 function initTabNavigation() {
-    const tabs = ["dashboard", "transactions", "recurring", "pockets"];
+    const tabs = ["projection", "dashboard", "transactions", "recurring", "pockets", "fixed-incomes"];
     
     tabs.forEach(tabId => {
         const btn = document.getElementById(`nav-tab-${tabId}`);
@@ -146,7 +150,7 @@ function initTabNavigation() {
 
 function switchTab(tabId) {
     window.currentActiveTab = tabId;
-    const tabs = ["dashboard", "transactions", "recurring", "pockets"];
+    const tabs = ["projection", "dashboard", "transactions", "recurring", "pockets", "fixed-incomes"];
 
     tabs.forEach(t => {
         const btn = document.getElementById(`nav-tab-${t}`);
@@ -172,6 +176,8 @@ function switchTab(tabId) {
     if (tabId === "transactions") loadTransactions();
     if (tabId === "recurring") loadRecurringBills();
     if (tabId === "pockets") loadPockets();
+    if (tabId === "fixed-incomes") loadFixedIncomes();
+    if (tabId === "projection") loadProjection();
 }
 
 // ==========================================
@@ -209,6 +215,12 @@ function initEventListeners() {
 
     const formCategory = document.getElementById("form-category");
     if (formCategory) formCategory.addEventListener("submit", handleCreateCategory);
+
+    const formFixedIncome = document.getElementById("form-fixed-income");
+    if (formFixedIncome) formFixedIncome.addEventListener("submit", handleCreateFixedIncome);
+
+    const formReceiveIncome = document.getElementById("form-receive-income");
+    if (formReceiveIncome) formReceiveIncome.addEventListener("submit", handleReceiveFixedIncome);
 
     // Filtros de transações em tempo real
     const filterType = document.getElementById("tx-filter-type");

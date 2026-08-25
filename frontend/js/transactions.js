@@ -13,7 +13,8 @@ function populateCategorySelects() {
     const selects = [
         document.getElementById("tx-category-id"),
         document.getElementById("tx-filter-category"),
-        document.getElementById("bill-category-id")
+        document.getElementById("bill-category-id"),
+        document.getElementById("income-category-id")
     ];
 
     selects.forEach(select => {
@@ -24,6 +25,7 @@ function populateCategorySelects() {
         select.innerHTML = isFilter ? '<option value="">Todas as Categorias</option>' : '<option value="">Sem Categoria</option>';
 
         cachedCategories.forEach(cat => {
+            if (select.id === "income-category-id" && cat.type !== "income") return;
             const opt = document.createElement("option");
             opt.value = cat.id;
             opt.textContent = `${cat.type === 'income' ? '🟢' : '🔴'} ${cat.name}`;
@@ -81,13 +83,13 @@ function renderTransactionsTable(transactions) {
                 ${formatDate(tx.transaction_date)}
             </td>
             <td class="py-3.5 px-4 text-slate-900 dark:text-slate-100 font-medium">
-                ${tx.description}
+                ${escapeHtml(tx.description)}
             </td>
             <td class="py-3.5 px-4">
                 <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold"
                       style="background-color: ${categoryColor}20; color: ${categoryColor};">
                     <span class="w-1.5 h-1.5 rounded-full" style="background-color: ${categoryColor}"></span>
-                    ${categoryName}
+                    ${escapeHtml(categoryName)}
                 </span>
             </td>
             <td class="py-3.5 px-4 font-bold text-right whitespace-nowrap ${isIncome ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}">
@@ -113,6 +115,7 @@ async function handleCreateTransaction(e) {
     const amount = parseFloat(document.getElementById("tx-amount").value);
     const category_id = document.getElementById("tx-category-id").value;
     const transaction_date = document.getElementById("tx-date").value;
+    const is_planned = document.getElementById("tx-is-planned")?.checked || false;
 
     if (!description || isNaN(amount) || amount <= 0) {
         showToast("Preencha a descrição e um valor válido.", "error");
@@ -125,7 +128,8 @@ async function handleCreateTransaction(e) {
             description,
             amount,
             category_id: category_id ? parseInt(category_id) : null,
-            transaction_date: transaction_date || null
+            transaction_date: transaction_date || null,
+            is_planned
         });
 
         showToast("Transação adicionada com sucesso!");

@@ -1,5 +1,15 @@
 const API_BASE = "/api";
 
+function escapeHtml(value) {
+    const element = document.createElement("div");
+    element.textContent = value == null ? "" : String(value);
+    return element.innerHTML;
+}
+
+function escapeJsString(value) {
+    return escapeHtml(JSON.stringify(String(value)));
+}
+
 const api = {
     getToken() {
         return localStorage.getItem("finance_token");
@@ -110,7 +120,7 @@ function showToast(message, type = "success") {
     };
 
     toast.className = `px-4 py-3 rounded-lg shadow-lg text-sm font-medium flex items-center gap-2 transform transition-all duration-300 translate-y-2 opacity-0 ${colors[type] || colors.info}`;
-    toast.innerHTML = `<span>${message}</span>`;
+    toast.innerHTML = `<span>${escapeHtml(message)}</span>`;
     container.appendChild(toast);
 
     setTimeout(() => {

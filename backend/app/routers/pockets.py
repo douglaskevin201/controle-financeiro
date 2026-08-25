@@ -80,7 +80,7 @@ def get_pocket(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    pocket = db.query(Pocket).filter(
+    pocket = db.query(Pocket).with_for_update().filter(
         Pocket.id == pocket_id,
         Pocket.user_id == current_user.id
     ).first()

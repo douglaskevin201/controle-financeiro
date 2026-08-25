@@ -1,10 +1,18 @@
-from pydantic import BaseModel, EmailStr, Field, ConfigDict
+from pydantic import BaseModel, EmailStr, Field, ConfigDict, field_validator
 from datetime import datetime
 from typing import Optional
 
 class UserBase(BaseModel):
     name: str = Field(..., min_length=2, max_length=100, description="Nome completo do usuário")
     email: EmailStr = Field(..., max_length=255, description="Endereço de e-mail válido")
+
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, value: str) -> str:
+        value = value.strip()
+        if len(value) < 2:
+            raise ValueError("O nome deve ter pelo menos 2 caracteres.")
+        return value
 
 class UserCreate(UserBase):
     password: str = Field(..., min_length=6, max_length=128, description="Senha forte com no mínimo 6 caracteres")

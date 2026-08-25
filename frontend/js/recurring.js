@@ -46,14 +46,14 @@ function renderRecurringBills(bills) {
                     </div>
                     <div>
                         <h4 class="font-bold text-slate-900 dark:text-white text-base ${isPaid ? 'line-through text-slate-400 dark:text-slate-500' : ''}">
-                            ${bill.description}
+                            ${escapeHtml(bill.description)}
                         </h4>
                         <p class="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1.5 mt-0.5">
                             <span>Vence dia ${bill.due_day}</span>
                             <span>•</span>
                             <span class="inline-flex items-center gap-1 font-medium" style="color: ${categoryColor}">
                                 <span class="w-1.5 h-1.5 rounded-full" style="background-color: ${categoryColor}"></span>
-                                ${categoryName}
+                                ${escapeHtml(categoryName)}
                             </span>
                         </p>
                     </div>
@@ -61,8 +61,9 @@ function renderRecurringBills(bills) {
 
                 <div class="text-right shrink-0">
                     <span class="block font-black text-lg text-slate-900 dark:text-white">
-                        ${formatBRL(bill.amount)}
+                        ${formatBRL(bill.amount)} <span class="text-xs font-semibold text-slate-400">/ parcela</span>
                     </span>
+                    ${bill.installments_total > 1 ? `<span class="block text-[11px] text-slate-500 mt-0.5">Total: ${formatBRL(bill.total_amount)} em ${bill.installments_total}x</span>` : ''}
                     <span class="inline-block mt-1 px-2.5 py-0.5 rounded-full text-xs font-semibold ${
                         isPaid 
                             ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300' 
@@ -111,10 +112,11 @@ async function handleCreateRecurringBill(e) {
     e.preventDefault();
     const description = document.getElementById("bill-description").value.trim();
     const amount = parseFloat(document.getElementById("bill-amount").value);
+    const installments_total = parseInt(document.getElementById("bill-installments").value, 10);
     const due_day = parseInt(document.getElementById("bill-due-day").value);
     const category_id = document.getElementById("bill-category-id").value;
 
-    if (!description || isNaN(amount) || amount <= 0 || isNaN(due_day) || due_day < 1 || due_day > 31) {
+    if (!description || isNaN(amount) || amount <= 0 || !Number.isInteger(installments_total) || installments_total < 1 || installments_total > 120 || isNaN(due_day) || due_day < 1 || due_day > 31) {
         showToast("Preencha todos os campos corretamente (dia entre 1 e 31).", "error");
         return;
     }
@@ -123,6 +125,10 @@ async function handleCreateRecurringBill(e) {
         await api.post("/recurring-bills", {
             description,
             amount,
+            total_amount: amount,
+            installments_total,
+            start_month: window.currentSelectedMonth,
+            start_year: window.currentSelectedYear,
             due_day,
             category_id: category_id ? parseInt(category_id) : null
         });

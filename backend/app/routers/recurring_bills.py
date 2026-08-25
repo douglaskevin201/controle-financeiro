@@ -18,6 +18,12 @@ from backend.app.services.auth_service import get_current_user
 
 router = APIRouter(prefix="/api/recurring-bills", tags=["Contas Recorrentes"])
 
+def bill_applies_to_period(bill: RecurringBill, month: int, year: int) -> bool:
+    if not bill.start_month or not bill.start_year or bill.installments_total <= 1:
+        return True
+    period = (year - bill.start_year) * 12 + month - bill.start_month
+    return 0 <= period < bill.installments_total
+
 @router.get("", response_model=List[RecurringBillResponse])
 def list_recurring_bills(
     month: Optional[int] = Query(None, ge=1, le=12),
@@ -34,6 +40,7 @@ def list_recurring_bills(
         query = query.filter(RecurringBill.is_active == True)
 
     bills = query.order_by(RecurringBill.due_day.asc()).all()
+    bills = [bill for bill in bills if bill_applies_to_period(bill, target_month, target_year)]
 
     # Busca os pagamentos do mês selecionado
     bill_ids = [b.id for b in bills]
@@ -55,6 +62,10 @@ def list_recurring_bills(
             user_id=bill.user_id,
             description=bill.description,
             amount=bill.amount,
+            total_amount=bill.total_amount or bill.amount,
+            installments_total=bill.installments_total,
+            start_month=bill.start_month,
+            start_year=bill.start_year,
             due_day=bill.due_day,
             category_id=bill.category_id,
             is_active=bill.is_active,
@@ -80,12 +91,20 @@ def create_recurring_bill(
         ).first()
         if not cat:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Categoria inválida.")
+        if cat.type != "expense":
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="A conta deve usar uma categoria de despesa.")
 
+    total_amount = bill_in.total_amount or bill_in.amount
+    installment_amount = round(total_amount / bill_in.installments_total, 2)
     new_bill = RecurringBill(
         user_id=current_user.id,
         category_id=bill_in.category_id,
         description=bill_in.description.strip(),
-        amount=bill_in.amount,
+        amount=installment_amount,
+        total_amount=total_amount,
+        installments_total=bill_in.installments_total,
+        start_month=bill_in.start_month or date.today().month,
+        start_year=bill_in.start_year or date.today().year,
         due_day=bill_in.due_day,
         is_active=bill_in.is_active if bill_in.is_active is not None else True
     )
@@ -98,6 +117,10 @@ def create_recurring_bill(
         user_id=new_bill.user_id,
         description=new_bill.description,
         amount=new_bill.amount,
+        total_amount=new_bill.total_amount,
+        installments_total=new_bill.installments_total,
+        start_month=new_bill.start_month,
+        start_year=new_bill.start_year,
         due_day=new_bill.due_day,
         category_id=new_bill.category_id,
         is_active=new_bill.is_active,
@@ -119,6 +142,8 @@ def pay_recurring_bill(
     target_month = month or date.today().month
     target_year = year or date.today().year
     pay_date = pay_data.paid_date or date.today()
+    if pay_date.month != target_month or pay_date.year != target_year:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="A data de pagamento deve pertencer ao mês selecionado.")
 
     bill = db.query(RecurringBill).filter(
         RecurringBill.id == bill_id,
@@ -175,6 +200,10 @@ def pay_recurring_bill(
         user_id=bill.user_id,
         description=bill.description,
         amount=bill.amount,
+        total_amount=bill.total_amount or bill.amount,
+        installments_total=bill.installments_total,
+        start_month=bill.start_month,
+        start_year=bill.start_year,
         due_day=bill.due_day,
         category_id=bill.category_id,
         is_active=bill.is_active,
@@ -225,6 +254,10 @@ def unpay_recurring_bill(
         user_id=bill.user_id,
         description=bill.description,
         amount=bill.amount,
+        total_amount=bill.total_amount or bill.amount,
+        installments_total=bill.installments_total,
+        start_month=bill.start_month,
+        start_year=bill.start_year,
         due_day=bill.due_day,
         category_id=bill.category_id,
         is_active=bill.is_active,
@@ -256,6 +289,8 @@ def update_recurring_bill(
             ).first()
             if not cat:
                 raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Categoria inválida.")
+            if cat.type != "expense":
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="A conta deve usar uma categoria de despesa.")
             bill.category_id = bill_in.category_id
         else:
             bill.category_id = None
@@ -264,10 +299,21 @@ def update_recurring_bill(
         bill.description = bill_in.description.strip()
     if bill_in.amount is not None:
         bill.amount = bill_in.amount
+    if bill_in.total_amount is not None:
+        bill.total_amount = bill_in.total_amount
+    if bill_in.installments_total is not None:
+        bill.installments_total = bill_in.installments_total
+    if bill_in.start_month is not None:
+        bill.start_month = bill_in.start_month
+    if bill_in.start_year is not None:
+        bill.start_year = bill_in.start_year
     if bill_in.due_day is not None:
         bill.due_day = bill_in.due_day
     if bill_in.is_active is not None:
         bill.is_active = bill_in.is_active
+    if bill_in.total_amount is not None or bill_in.installments_total is not None:
+        bill.total_amount = bill.total_amount or bill.amount
+        bill.amount = round(bill.total_amount / bill.installments_total, 2)
 
     db.commit()
     db.refresh(bill)
@@ -276,6 +322,10 @@ def update_recurring_bill(
         user_id=bill.user_id,
         description=bill.description,
         amount=bill.amount,
+        total_amount=bill.total_amount or bill.amount,
+        installments_total=bill.installments_total,
+        start_month=bill.start_month,
+        start_year=bill.start_year,
         due_day=bill.due_day,
         category_id=bill.category_id,
         is_active=bill.is_active,

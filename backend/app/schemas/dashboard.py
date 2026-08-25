@@ -27,6 +27,7 @@ class DashboardSummary(BaseModel):
     monthly_income: float
     monthly_expense: float
     monthly_net: float
+    fixed_income_expected: float
     
     # Contas fixas do mês
     recurring_bills_total: float

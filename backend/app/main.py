@@ -16,6 +16,7 @@ from backend.app.routers import (
     recurring_bills_router,
     pockets_router,
     dashboard_router,
+    fixed_incomes_router,
 )
 from backend.app.limiter import limiter
 from slowapi import _rate_limit_exceeded_handler
@@ -45,7 +46,13 @@ async def security_headers(request: Request, call_next):
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["Referrer-Policy"] = "no-referrer"
-        response.headers["Content-Security-Policy"] = "default-src 'self'"
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'self'; "
+            "script-src 'self' https://cdn.tailwindcss.com https://cdn.jsdelivr.net 'unsafe-inline'; "
+            "style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; "
+            "font-src 'self' https://fonts.gstatic.com; "
+            "img-src 'self' data:; connect-src 'self';"
+        )
     return response
 
 # SlowAPI middleware for global rate limiting
@@ -69,6 +76,7 @@ app.include_router(transactions_router)
 app.include_router(categories_router)
 app.include_router(recurring_bills_router)
 app.include_router(pockets_router)
+app.include_router(fixed_incomes_router)
 
 # Configuração para servir o Frontend estático
 frontend_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "frontend"))

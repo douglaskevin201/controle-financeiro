@@ -15,4 +15,5 @@ class Category(Base):
     user = relationship("User", back_populates="categories")
     transactions = relationship("Transaction", back_populates="category")
     recurring_bills = relationship("RecurringBill", back_populates="category")
+    fixed_incomes = relationship("FixedIncome", back_populates="category")
 

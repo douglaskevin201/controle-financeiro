@@ -73,6 +73,23 @@ python bolso.py
 uvicorn backend.app.main:app --reload --port 8000
 ```
 
+### Backup e migrações do banco
+
+Antes de atualizar a aplicação ou alterar o schema, crie um backup consistente:
+
+```powershell
+python backup_database.py
+```
+
+O backup será criado em `backups/` e validado com `PRAGMA integrity_check`.
+Após instalar uma versão nova, aplique as migrações de forma aditiva:
+
+```powershell
+alembic upgrade head
+```
+
+As migrações não possuem downgrade destrutivo. O banco original deve ser copiado e testado antes de cada deploy.
+
 ### Passo 3: Acessar no Navegador
 
 - **Aplicação Web (Dashboard)**: [http://127.0.0.1:8000](http://127.0.0.1:8000)
